@@ -171,10 +171,35 @@ defmodule NaiveDateTime do
           Calendar.microsecond(),
           Calendar.calendar()
         ) :: {:ok, t} | {:error, atom}
-  def new(year, month, day, hour, minute, second, microsecond \\ {0, 0}, calendar \\ Calendar.ISO) do
-    with {:ok, date} <- Date.new(year, month, day, calendar),
-         {:ok, time} <- Time.new(hour, minute, second, microsecond, calendar),
-         do: new(date, time)
+  def new(year, month, day, hour, minute, second, microsecond \\ {0, 0}, calendar \\ Calendar.ISO)
+
+  def new(year, month, day, hour, minute, second, microsecond, calendar)
+      when is_integer(microsecond) do
+    new(year, month, day, hour, minute, second, {microsecond, 6}, calendar)
+  end
+
+  def new(year, month, day, hour, minute, second, microsecond, calendar) do
+    cond do
+      not calendar.valid_date?(year, month, day) ->
+        {:error, :invalid_date}
+
+      not calendar.valid_time?(hour, minute, second, microsecond) ->
+        {:error, :invalid_time}
+
+      true ->
+        naive_datetime = %NaiveDateTime{
+          calendar: calendar,
+          year: year,
+          month: month,
+          day: day,
+          hour: hour,
+          minute: minute,
+          second: second,
+          microsecond: microsecond
+        }
+
+        {:ok, naive_datetime}
+    end
   end
 
   @doc """
@@ -476,20 +501,21 @@ defmodule NaiveDateTime do
     end
   end
 
+  @sep [?\s, ?T]
+  [match_date, guard_date, read_date] = Calendar.ISO.__match_date__()
+  [match_time, guard_time, read_time] = Calendar.ISO.__match_time__()
+
   def from_iso8601(string, calendar) when is_binary(string) do
-    with <<year::4-bytes, ?-, month::2-bytes, ?-, day::2-bytes, sep, rest::binary>> <- string,
-         true <- sep in [?\s, ?T],
-         <<hour::2-bytes, ?:, min::2-bytes, ?:, sec::2-bytes, rest::binary>> <- rest,
-         {year, ""} <- Integer.parse(year),
-         {month, ""} <- Integer.parse(month),
-         {day, ""} <- Integer.parse(day),
-         {hour, ""} <- Integer.parse(hour),
-         {min, ""} <- Integer.parse(min),
-         {sec, ""} <- Integer.parse(sec),
+    with <<unquote(match_date), sep, unquote(match_time), rest::binary>>
+         when unquote(guard_date) and sep in @sep and unquote(guard_time) <- string,
          {microsec, rest} <- Calendar.ISO.parse_microsecond(rest),
          {_offset, ""} <- Calendar.ISO.parse_offset(rest) do
-      with {:ok, utc_date} <- new(year, month, day, hour, min, sec, microsec, Calendar.ISO),
-           do: convert(utc_date, calendar)
+      {year, month, day} = unquote(read_date)
+      {hour, min, sec} = unquote(read_time)
+
+      with {:ok, iso_naive_dt} <- new(year, month, day, hour, min, sec, microsec, Calendar.ISO) do
+        convert(iso_naive_dt, calendar)
+      end
     else
       _ -> {:error, :invalid_format}
     end
@@ -641,8 +667,8 @@ defmodule NaiveDateTime do
   def from_erl(tuple, microsecond \\ {0, 0}, calendar \\ Calendar.ISO)
 
   def from_erl({{year, month, day}, {hour, minute, second}}, microsecond, calendar) do
-    with {:ok, utc_date} <- new(year, month, day, hour, minute, second, microsecond),
-         do: convert(utc_date, calendar)
+    with {:ok, iso_naive_dt} <- new(year, month, day, hour, minute, second, microsecond),
+         do: convert(iso_naive_dt, calendar)
   end
 
   @doc """

@@ -52,27 +52,52 @@ reset_vars(Env) ->
 
 %% Receives two scopes and return a new scope based on the second
 %% with their variables merged.
-mergev(#{vars := V1, unused_vars := U1, current_vars := C1},
-       #{vars := V2, unused_vars := U2, current_vars := C2} = E2) ->
-  E2#{
-    vars := ordsets:union(V1, V2),
-    unused_vars := merge_vars(U1, U2),
-    current_vars := merge_vars(C1, C2)
-  }.
+%% Unrolled for performance reasons.
+mergev(#{unused_vars := U1, current_vars := C1},
+       #{unused_vars := U2, current_vars := C2} = E2) ->
+  if
+    C1 =/= C2 ->
+      if
+        U1 =/= U2 ->
+          C = merge_vars(C1, C2),
+          E2#{vars := maps:keys(C), unused_vars := merge_vars(U1, U2), current_vars := C};
+        true ->
+          C = merge_vars(C1, C2),
+          E2#{vars := maps:keys(C), current_vars := C}
+      end;
+
+    U1 =/= U2 ->
+      E2#{unused_vars := merge_vars(U1, U2)};
+
+    true ->
+      E2
+  end.
 
 %% Receives two scopes and return the later scope
 %% keeping the variables from the first (imports
 %% and everything else are passed forward).
+%% Unrolled for performance reasons.
+mergea(#{unused_vars := U1, current_vars := C1, vars := V1},
+       #{unused_vars := U2, current_vars := C2} = E2) ->
+  if
+    C1 =/= C2 ->
+      if
+        U1 =/= U2 ->
+          E2#{vars := V1, unused_vars := U1, current_vars := C1};
+        true ->
+          E2#{vars := V1, current_vars := C1}
+      end;
+    U1 =/= U2 ->
+      E2#{unused_vars := U1};
+    true ->
+      E2
+  end.
 
-mergea(#{vars := V1, unused_vars := U1, current_vars := C1}, E2) ->
-  E2#{vars := V1, unused_vars := U1, current_vars := C1}.
-
-merge_vars(V, V) -> V;
 merge_vars(V1, V2) ->
   maps:fold(fun(K, M2, Acc) ->
     case Acc of
       #{K := M1} when M1 >= M2 -> Acc;
-      _ -> maps:put(K, M2, Acc)
+      _ -> Acc#{K => M2}
     end
   end, V1, V2).
 

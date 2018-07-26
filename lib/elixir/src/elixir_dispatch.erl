@@ -163,7 +163,7 @@ do_expand_import(Meta, {Name, Arity} = Tuple, Args, Module, E, Result) ->
 
 expand_require(Meta, Receiver, {Name, Arity} = Tuple, Args, E) ->
   check_deprecation(Meta, Receiver, Name, Arity, E),
-  Required = (Receiver == ?key(E, module)) orelse is_element(Receiver, ?key(E, requires)) orelse required(Meta),
+  Required = (Receiver == ?key(E, module)) orelse required(Meta) orelse is_element(Receiver, ?key(E, requires)),
 
   case is_element(Tuple, get_macros(Receiver, Required)) of
     true when Required ->
@@ -201,7 +201,7 @@ expand_macro_named(Meta, Receiver, Name, Arity, Args, E) ->
 
 expand_quoted(Meta, Receiver, Name, Arity, Quoted, E) ->
   Line = ?line(Meta),
-  Next = erlang:unique_integer(),
+  Next = elixir_module:next_counter(?key(E, module)),
 
   try
     elixir_expand:expand(

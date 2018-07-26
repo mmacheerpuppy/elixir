@@ -41,7 +41,7 @@ defmodule Module do
         @callback default_port() :: integer
 
         @doc "Parses the given URL"
-        @callback parse(uri_info :: URI.t) :: URI.t
+        @callback parse(uri_info :: URI.t()) :: URI.t()
       end
 
   And then a module may use it as:
@@ -67,7 +67,7 @@ defmodule Module do
   Using `@impl` the example above can be rewritten as:
 
       defmodule URI.HTTP do
-        @behaviour URI.parser
+        @behaviour URI.Parser
 
         @impl true
         def default_port(), do: 80
@@ -82,10 +82,12 @@ defmodule Module do
         @behaviour Bar
         @behaviour Baz
 
-        @impl true # will warn if neither Bar nor Baz specify a callback named bar/0
+        # will warn if neither Bar nor Baz specify a callback named bar/0
+        @impl true
         def bar(), do: :ok
 
-        @impl Baz # will warn if Baz does not specify a callback named baz/0
+        # will warn if Baz does not specify a callback named baz/0
+        @impl Baz
         def baz(), do: :ok
       end
 
@@ -356,7 +358,7 @@ defmodule Module do
         @after_compile __MODULE__
 
         def __after_compile__(env, _bytecode) do
-          IO.inspect env
+          IO.inspect(env)
         end
       end
 
@@ -432,12 +434,12 @@ defmodule Module do
 
       defmodule Hooks do
         def on_def(_env, kind, name, args, guards, body) do
-          IO.puts "Defining #{kind} named #{name} with args:"
-          IO.inspect args
-          IO.puts "and guards"
-          IO.inspect guards
-          IO.puts "and body"
-          IO.puts Macro.to_string(body)
+          IO.puts("Defining #{kind} named #{name} with args:")
+          IO.inspect(args)
+          IO.puts("and guards")
+          IO.inspect(guards)
+          IO.puts("and body")
+          IO.puts(Macro.to_string(body))
         end
       end
 
@@ -466,7 +468,7 @@ defmodule Module do
       of the corresponding setting in `Code.compiler_options/1`
 
     * `@compile {:inline, some_fun: 2, other_fun: 3}` - inlines the given
-      name/arity pairs. Inlining is applied locally, calls from another 
+      name/arity pairs. Inlining is applied locally, calls from another
       module are not affected by this option
 
     * `@compile {:autoload, false}` - disables automatic loading of
@@ -524,11 +526,16 @@ defmodule Module do
   ## Examples
 
       defmodule Foo do
-        contents = quote do: (def sum(a, b), do: a + b)
-        Module.eval_quoted __MODULE__, contents
+        contents =
+          quote do
+            def sum(a, b), do: a + b
+          end
+
+        Module.eval_quoted(__MODULE__, contents)
       end
 
-      Foo.sum(1, 2) #=> 3
+      Foo.sum(1, 2)
+      #=> 3
 
   For convenience, you can pass any `Macro.Env` struct, such
   as  `__ENV__/0`, as the first argument or as options. Both
@@ -536,11 +543,16 @@ defmodule Module do
   from the environment:
 
       defmodule Foo do
-        contents = quote do: (def sum(a, b), do: a + b)
-        Module.eval_quoted __ENV__, contents
+        contents =
+          quote do
+            def sum(a, b), do: a + b
+          end
+
+        Module.eval_quoted(__ENV__, contents)
       end
 
-      Foo.sum(1, 2) #=> 3
+      Foo.sum(1, 2)
+      #=> 3
 
   Note that if you pass a `Macro.Env` struct as first argument
   while also passing `opts`, they will be merged with `opts`
@@ -595,7 +607,8 @@ defmodule Module do
 
       Module.create(Hello, contents, Macro.Env.location(__ENV__))
 
-      Hello.world #=> true
+      Hello.world()
+      #=> true
 
   ## Differences from `defmodule`
 
@@ -622,7 +635,7 @@ defmodule Module do
       raise ArgumentError, "expected :file to be given as option"
     end
 
-    next = :erlang.unique_integer()
+    next = :elixir_module.next_counter(nil)
     line = Keyword.get(opts, :line, 0)
     quoted = :elixir_quote.linify_with_context_counter(line, {module, next}, quoted)
     :elixir_module.compile(module, quoted, [], :elixir.env_for_eval(opts))
@@ -881,9 +894,9 @@ defmodule Module do
   ## Examples
 
       defmodule Example do
-        Module.defines? __MODULE__, {:version, 0} #=> false
+        Module.defines?(__MODULE__, {:version, 0}) #=> false
         def version, do: 1
-        Module.defines? __MODULE__, {:version, 0} #=> true
+        Module.defines?(__MODULE__, {:version, 0}) #=> true
       end
 
   """
@@ -907,9 +920,9 @@ defmodule Module do
   ## Examples
 
       defmodule Example do
-        Module.defines? __MODULE__, {:version, 0}, :defp #=> false
+        Module.defines?(__MODULE__, {:version, 0}, :def) #=> false
         def version, do: 1
-        Module.defines? __MODULE__, {:version, 0}, :defp #=> false
+        Module.defines?(__MODULE__, {:version, 0}, :def) #=> true
       end
 
   """
@@ -955,7 +968,7 @@ defmodule Module do
 
       defmodule Example do
         def version, do: 1
-        Module.definitions_in __MODULE__ #=> [{:version, 0}]
+        Module.definitions_in(__MODULE__) #=> [{:version, 0}]
       end
 
   """
@@ -974,8 +987,8 @@ defmodule Module do
 
       defmodule Example do
         def version, do: 1
-        Module.definitions_in __MODULE__, :def  #=> [{:version, 0}]
-        Module.definitions_in __MODULE__, :defp #=> []
+        Module.definitions_in(__MODULE__, :def)  #=> [{:version, 0}]
+        Module.definitions_in(__MODULE__, :defp) #=> []
       end
 
   """
@@ -1114,7 +1127,7 @@ defmodule Module do
   ## Examples
 
       defmodule MyModule do
-        Module.put_attribute __MODULE__, :custom_threshold_for_lib, 10
+        Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
       end
 
   """
@@ -1143,12 +1156,12 @@ defmodule Module do
   ## Examples
 
       defmodule Foo do
-        Module.put_attribute __MODULE__, :value, 1
-        Module.get_attribute __MODULE__, :value #=> 1
+        Module.put_attribute(__MODULE__, :value, 1)
+        Module.get_attribute(__MODULE__, :value) #=> 1
 
-        Module.register_attribute __MODULE__, :value, accumulate: true
-        Module.put_attribute __MODULE__, :value, 1
-        Module.get_attribute __MODULE__, :value #=> [1]
+        Module.register_attribute(__MODULE__, :value, accumulate: true)
+        Module.put_attribute(__MODULE__, :value, 1)
+        Module.get_attribute(__MODULE__, :value) #=> [1]
       end
 
   """
@@ -1165,8 +1178,8 @@ defmodule Module do
   ## Examples
 
       defmodule MyModule do
-        Module.put_attribute __MODULE__, :custom_threshold_for_lib, 10
-        Module.delete_attribute __MODULE__, :custom_threshold_for_lib
+        Module.put_attribute(__MODULE__, :custom_threshold_for_lib, 10)
+        Module.delete_attribute(__MODULE__, :custom_threshold_for_lib)
       end
 
   """
@@ -1213,9 +1226,7 @@ defmodule Module do
   ## Examples
 
       defmodule MyModule do
-        Module.register_attribute __MODULE__,
-          :custom_threshold_for_lib,
-          accumulate: true, persist: false
+        Module.register_attribute(__MODULE__, :custom_threshold_for_lib, accumulate: true)
 
         @custom_threshold_for_lib 10
         @custom_threshold_for_lib 20
@@ -1787,6 +1798,18 @@ defmodule Module do
     end
 
     :ets.insert(set, {key, value, line})
+  end
+
+  defp put_attribute(_module, :on_load, value, line, set, bag) do
+    try do
+      :ets.lookup_element(set, :on_load, 3)
+    catch
+      :error, :badarg ->
+        :ets.insert(set, {:on_load, value, line})
+        :ets.insert(bag, {:attributes, :on_load})
+    else
+      _ -> raise ArgumentError, "the @on_load attribute can only be set once per module"
+    end
   end
 
   defp put_attribute(_module, key, value, line, set, bag) do

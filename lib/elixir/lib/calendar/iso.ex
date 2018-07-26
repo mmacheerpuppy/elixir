@@ -36,6 +36,39 @@ defmodule Calendar.ISO do
 
   @months_in_year 12
 
+  @doc false
+  def __match_date__ do
+    quote do
+      [
+        <<y1, y2, y3, y4, ?-, m1, m2, ?-, d1, d2>>,
+        y1 >= ?0 and y1 <= ?9 and y2 >= ?0 and y2 <= ?9 and y3 >= ?0 and y3 <= ?9 and y4 >= ?0 and
+          y4 <= ?9 and m1 >= ?0 and m1 <= ?9 and m2 >= ?0 and m2 <= ?9 and d1 >= ?0 and d1 <= ?9 and
+          d2 >= ?0 and d2 <= ?9,
+        {
+          (y1 - ?0) * 1000 + (y2 - ?0) * 100 + (y3 - ?0) * 10 + (y4 - ?0),
+          (m1 - ?0) * 10 + (m2 - ?0),
+          (d1 - ?0) * 10 + (d2 - ?0)
+        }
+      ]
+    end
+  end
+
+  @doc false
+  def __match_time__ do
+    quote do
+      [
+        <<h1, h2, ?:, i1, i2, ?:, s1, s2>>,
+        h1 >= ?0 and h1 <= ?9 and h2 >= ?0 and h2 <= ?9 and i1 >= ?0 and i1 <= ?9 and i2 >= ?0 and
+          i2 <= ?9 and s1 >= ?0 and s1 <= ?9 and s2 >= ?0 and s2 <= ?9,
+        {
+          (h1 - ?0) * 10 + (h2 - ?0),
+          (i1 - ?0) * 10 + (i2 - ?0),
+          (s1 - ?0) * 10 + (s2 - ?0)
+        }
+      ]
+    end
+  end
+
   @doc """
   Returns the `t:Calendar.iso_days/0` format of the specified date.
 
@@ -403,13 +436,16 @@ defmodule Calendar.ISO do
 
   ## Examples
 
-      iex> Calendar.ISO.datetime_to_string(2017, 8, 1, 1, 2, 3, {4, 5}, "Europe/Berlin", "CET", 3600, 0)
+      iex> time_zone = "Europe/Berlin"
+      iex> Calendar.ISO.datetime_to_string(2017, 8, 1, 1, 2, 3, {4, 5}, time_zone, "CET", 3600, 0)
       "2017-08-01 01:02:03.00000+01:00 CET Europe/Berlin"
-      iex> Calendar.ISO.datetime_to_string(2017, 8, 1, 1, 2, 3, {4, 5}, "Europe/Berlin", "CDT", 3600, 3600)
+      iex> Calendar.ISO.datetime_to_string(2017, 8, 1, 1, 2, 3, {4, 5}, time_zone, "CDT", 3600, 3600)
       "2017-08-01 01:02:03.00000+02:00 CDT Europe/Berlin"
-      iex> Calendar.ISO.datetime_to_string(2015, 2, 28, 1, 2, 3, {4, 5}, "America/Los_Angeles", "PST", -28800, 0)
+
+      iex> time_zone = "America/Los_Angeles"
+      iex> Calendar.ISO.datetime_to_string(2015, 2, 28, 1, 2, 3, {4, 5}, time_zone, "PST", -28800, 0)
       "2015-02-28 01:02:03.00000-08:00 PST America/Los_Angeles"
-      iex> Calendar.ISO.datetime_to_string(2015, 2, 28, 1, 2, 3, {4, 5}, "America/Los_Angeles", "PDT", -28800, 3600)
+      iex> Calendar.ISO.datetime_to_string(2015, 2, 28, 1, 2, 3, {4, 5}, time_zone, "PDT", -28800, 3600)
       "2015-02-28 01:02:03.00000-07:00 PDT America/Los_Angeles"
 
   """

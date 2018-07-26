@@ -1,7 +1,7 @@
 %% Compiler backend to Erlang.
 -module(elixir_erl).
 -export([elixir_to_erl/1, definition_to_anonymous/4, compile/1, consolidate/3,
-         get_ann/1, remote/4, debug_info/4, scope/1, format_error/1]).
+         get_ann/1, debug_info/4, scope/1, format_error/1]).
 -include("elixir.hrl").
 
 %% debug_info callback
@@ -38,14 +38,6 @@ get_ann([{line, Line} | T], Gen, _) when is_integer(Line) -> get_ann(T, Gen, Lin
 get_ann([_ | T], Gen, Line) -> get_ann(T, Gen, Line);
 get_ann([], Gen, Line) -> erl_anno:set_generated(Gen, Line).
 
-%% Builds a remote call annotation.
-
-remote(Ann, Module, Function, Args) when is_atom(Module), is_atom(Function), is_list(Args) ->
-  {call, Ann,
-    {remote, Ann, {atom, Ann, Module}, {atom, Ann, Function}},
-    Args
-  }.
-
 %% Converts an Elixir definition to an anonymous function.
 
 definition_to_anonymous(Module, Kind, Meta, Clauses) ->
@@ -80,7 +72,7 @@ elixir_to_erl([]) ->
 elixir_to_erl(<<>>) ->
   {bin, 0, []};
 elixir_to_erl(Tree) when is_list(Tree) ->
-  elixir_to_erl_cons1(Tree, []);
+  elixir_to_erl_cons(Tree);
 elixir_to_erl(Tree) when is_atom(Tree) ->
   {atom, 0, Tree};
 elixir_to_erl(Tree) when is_integer(Tree) ->
@@ -109,18 +101,12 @@ elixir_to_erl(Function) when is_function(Function) ->
       error(badarg)
   end;
 elixir_to_erl(Pid) when is_pid(Pid) ->
-  elixir_erl:remote(0, erlang, binary_to_term,
-    [elixir_erl:elixir_to_erl(term_to_binary(Pid))]);
+  ?remote(0, erlang, binary_to_term, [elixir_erl:elixir_to_erl(term_to_binary(Pid))]);
 elixir_to_erl(_Other) ->
   error(badarg).
 
-elixir_to_erl_cons1([H | T], Acc) -> elixir_to_erl_cons1(T, [H | Acc]);
-elixir_to_erl_cons1(Other, Acc) -> elixir_to_erl_cons2(Acc, elixir_to_erl(Other)).
-
-elixir_to_erl_cons2([H | T], Acc) ->
-  elixir_to_erl_cons2(T, {cons, 0, elixir_to_erl(H), Acc});
-elixir_to_erl_cons2([], Acc) ->
-  Acc.
+elixir_to_erl_cons([H | T]) -> {cons, 0, elixir_to_erl(H), elixir_to_erl_cons(T)};
+elixir_to_erl_cons(T) -> elixir_to_erl(T).
 
 %% Returns a scope for translation.
 
@@ -238,7 +224,7 @@ translate_clause(Kind, {Meta, Args, Guards, Body}) ->
         true  ->
           FBody = {'match', Ann,
             {'var', Ann, '__CALLER__'},
-            elixir_erl:remote(Ann, elixir_env, linify, [{var, Ann, '_@CALLER'}])
+            ?remote(Ann, elixir_env, linify, [{var, Ann, '_@CALLER'}])
           },
           setelement(5, MClause, [FBody | element(5, TClause)]);
         false ->
@@ -295,7 +281,7 @@ macros_info(Defmacro) ->
   {clause, 0, [{atom, 0, macros}], [], [elixir_erl:elixir_to_erl(lists:sort(Defmacro))]}.
 
 get_module_info(Module, Key) ->
-  Call = remote(0, erlang, get_module_info, [{atom, 0, Module}, {var, 0, 'Key'}]),
+  Call = ?remote(0, erlang, get_module_info, [{atom, 0, Module}, {var, 0, 'Key'}]),
   {clause, 0, [{match, 0, {var, 0, 'Key'}, {atom, 0, Key}}], [], [Call]}.
 
 deprecated_info(Deprecated) ->

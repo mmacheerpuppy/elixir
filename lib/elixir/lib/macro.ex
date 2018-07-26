@@ -356,12 +356,7 @@ defmodule Macro do
   def decompose_call(_), do: :error
 
   @doc """
-  Recursively escapes a value so it can be inserted
-  into a syntax tree.
-
-  One may pass `unquote: true` to `escape/2`
-  which leaves `unquote/1` statements unescaped, effectively
-  unquoting the contents on escape.
+  Recursively escapes a value so it can be inserted into a syntax tree.
 
   ## Examples
 
@@ -373,6 +368,26 @@ defmodule Macro do
 
       iex> Macro.escape({:unquote, [], [1]}, unquote: true)
       1
+
+  ## Options
+
+    * `:unquote` - when true, this function leaves `unquote/1` and
+      `unquote_splicing/1` statements unescaped, effectively unquoting
+      the contents on escape. This option is useful only when escaping
+      ASTs which may have quoted fragments in them. Defaults to false.
+
+    * `:prune_metadata` - when true, removes metadata from escaped AST
+      nodes. Note this option changes the semantics of escaped code and
+      it should only be used when escaping ASTs, never values. Defaults
+      to false.
+
+      As an example, `ExUnit` stores the AST of every assertion, so when
+      an assertion fails we can show code snippets to users. Without this
+      option, each time the test module is compiled, we get a different
+      MD5 of the module byte code, because the AST contains metadata,
+      such as counters, specific to the compilation environment. By pruning
+      the metadata, we ensure that the module is deterministic and reduce
+      the amount of data `ExUnit` needs to keep around.
 
   ## Comparison to `Kernel.quote/2`
 
@@ -402,7 +417,9 @@ defmodule Macro do
   """
   @spec escape(term, keyword) :: t()
   def escape(expr, opts \\ []) do
-    elem(:elixir_quote.escape(expr, Keyword.get(opts, :unquote, false)), 0)
+    unquote = Keyword.get(opts, :unquote, false)
+    kind = if Keyword.get(opts, :prune_metadata, false), do: :prune_metadata, else: :default
+    :elixir_quote.escape(expr, kind, unquote)
   end
 
   @doc """
@@ -508,7 +525,7 @@ defmodule Macro do
       def unescape_map(?s), do: ?\s
       def unescape_map(?t), do: ?\t
       def unescape_map(?v), do: ?\v
-      def unescape_map(e),  do: e
+      def unescape_map(e), do: e
 
   If the `unescape_map/1` function returns `false`, the char is
   not escaped and the backslash is kept in the string.
@@ -521,7 +538,7 @@ defmodule Macro do
 
   Using the `unescape_map/1` function defined above is easy:
 
-      Macro.unescape_string "example\\n", &unescape_map(&1)
+      Macro.unescape_string("example\\n", &unescape_map(&1))
 
   """
   @spec unescape_string(String.t(), (non_neg_integer -> non_neg_integer | false)) :: String.t()
@@ -1148,7 +1165,7 @@ defmodule Macro do
 
       defmacro defmodule_with_length(name, do: block) do
         expanded = Macro.expand(name, __CALLER__)
-        length   = length(Atom.to_charlist(expanded))
+        length = length(Atom.to_charlist(expanded))
 
         quote do
           defmodule unquote(name) do
@@ -1235,7 +1252,7 @@ defmodule Macro do
 
       case expand do
         {:ok, receiver, quoted} ->
-          next = :erlang.unique_integer()
+          next = :elixir_module.next_counter(module)
           {:elixir_quote.linify_with_context_counter(0, {receiver, next}, quoted), true}
 
         {:ok, _receiver, _name, _args} ->
@@ -1260,7 +1277,7 @@ defmodule Macro do
 
         case expand do
           {:ok, receiver, quoted} ->
-            next = :erlang.unique_integer()
+            next = :elixir_module.next_counter(env.module)
             {:elixir_quote.linify_with_context_counter(0, {receiver, next}, quoted), true}
 
           :error ->

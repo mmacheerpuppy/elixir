@@ -555,10 +555,10 @@ defmodule System do
       iex> System.cmd("echo", ["hello"])
       {"hello\n", 0}
 
-      iex> System.cmd("echo", ["hello"]), env: [{"MIX_ENV", "test"}]
+      iex> System.cmd("echo", ["hello"], env: [{"MIX_ENV", "test"}])
       {"hello\n", 0}
 
-      iex> System.cmd("echo", ["hello"]), into: IO.stream(:stdio, :line)
+      iex> System.cmd("echo", ["hello"], into: IO.stream(:stdio, :line))
       hello
       {%IO.Stream{}, 0}
 
@@ -895,10 +895,15 @@ defmodule System do
   end
 
   defp warn(unit, replacement_unit) do
-    IO.warn(
-      "deprecated time unit: #{inspect(unit)}. A time unit should be " <>
-        ":second, :millisecond, :microsecond, :nanosecond, or a positive integer"
-    )
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    stacktrace = Enum.drop(stacktrace, 3)
+
+    :elixir_config.warn({System, unit}, stacktrace) &&
+      IO.warn(
+        "deprecated time unit: #{inspect(unit)}. A time unit should be " <>
+          ":second, :millisecond, :microsecond, :nanosecond, or a positive integer",
+        stacktrace
+      )
 
     replacement_unit
   end

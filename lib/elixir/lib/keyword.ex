@@ -81,7 +81,7 @@ defmodule Keyword do
 
       iex> Keyword.keyword?([])
       true
-      iex> Keyword.keyword?([a: 1])
+      iex> Keyword.keyword?(a: 1)
       true
       iex> Keyword.keyword?([{Foo, 1}])
       true
@@ -417,9 +417,9 @@ defmodule Keyword do
 
   ## Examples
 
-      iex> Keyword.keys([a: 1, b: 2])
+      iex> Keyword.keys(a: 1, b: 2)
       [:a, :b]
-      iex> Keyword.keys([a: 1, b: 2, a: 3])
+      iex> Keyword.keys(a: 1, b: 2, a: 3)
       [:a, :b, :a]
 
   """
@@ -435,9 +435,9 @@ defmodule Keyword do
 
   ## Examples
 
-      iex> Keyword.values([a: 1, b: 2])
+      iex> Keyword.values(a: 1, b: 2)
       [1, 2]
-      iex> Keyword.values([a: 1, b: 2, a: 3])
+      iex> Keyword.values(a: 1, b: 2, a: 3)
       [1, 2, 3]
 
   """
@@ -712,13 +712,13 @@ defmodule Keyword do
 
         _ ->
           raise ArgumentError,
-            message: "expected a keyword list as the first argument, got: #{inspect(keywords1)}"
+                "expected a keyword list as the first argument, got: #{inspect(keywords1)}"
       end
 
       :lists.filter(fun, keywords1) ++ keywords2
     else
       raise ArgumentError,
-        message: "expected a keyword list as the second argument, got: #{inspect(keywords2)}"
+            "expected a keyword list as the second argument, got: #{inspect(keywords2)}"
     end
   end
 
@@ -741,17 +741,17 @@ defmodule Keyword do
       [b: 2, a: 4, d: 4]
 
       iex> Keyword.merge([a: 1, b: 2], [a: 3, d: 4, a: 5], fn :a, v1, v2 ->
-      ...>  v1 + v2
+      ...>   v1 + v2
       ...> end)
       [b: 2, a: 4, d: 4, a: 5]
 
       iex> Keyword.merge([a: 1, b: 2, a: 3], [a: 3, d: 4, a: 5], fn :a, v1, v2 ->
-      ...>  v1 + v2
+      ...>   v1 + v2
       ...> end)
       [b: 2, a: 4, d: 4, a: 8]
 
       iex> Keyword.merge([a: 1, b: 2], [:a, :b], fn :a, v1, v2 ->
-      ...>  v1 + v2
+      ...>   v1 + v2
       ...> end)
       ** (ArgumentError) expected a keyword list as the second argument, got: [:a, :b]
 
@@ -763,7 +763,7 @@ defmodule Keyword do
       do_merge(keywords2, [], keywords1, keywords1, fun, keywords2)
     else
       raise ArgumentError,
-        message: "expected a keyword list as the first argument, got: #{inspect(keywords1)}"
+            "expected a keyword list as the first argument, got: #{inspect(keywords1)}"
     end
   end
 
@@ -785,7 +785,7 @@ defmodule Keyword do
 
   defp do_merge(_other, _acc, _rest, _original, _fun, keywords2) do
     raise ArgumentError,
-      message: "expected a keyword list as the second argument, got: #{inspect(keywords2)}"
+          "expected a keyword list as the second argument, got: #{inspect(keywords2)}"
   end
 
   @doc """
@@ -1035,7 +1035,7 @@ defmodule Keyword do
 
   ## Examples
 
-      iex> Keyword.to_list([a: 1])
+      iex> Keyword.to_list(a: 1)
       [a: 1]
 
   """
